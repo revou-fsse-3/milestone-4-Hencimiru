@@ -1,23 +1,24 @@
-from flask import Blueprint, render_template, request, redirect, jsonify, url_for
+from flask import Blueprint, request, redirect, jsonify
+from flask_login import login_required, login_user, logout_user
+from flask_jwt_extended import create_access_token
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
 from sql_connector.mysql_connector import engine
 from models.users import User
-from sqlalchemy import select
-from DTO.api_response import api_response
-from sqlalchemy import func
 
-from flask_login import current_user, login_required
-from sqlalchemy.orm import sessionmaker
-from flask_login import login_user, logout_user
-from flask_jwt_extended import create_access_token
+from DTO.api_response import api_response
 
 user_management_routes = Blueprint('user_management_routes', __name__)
 
 @user_management_routes.route("/users", methods=['POST'])
 def do_registration():
     try:
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        if not username or not email or not password:
+            raise ValueError("Username, email, atau password tidak boleh kosong")
 
         new_user = User(username=username, email=email)
         new_user.set_password(password)
@@ -31,7 +32,7 @@ def do_registration():
 
         return api_response(
             status_code=201,
-            message= "Pembuatan data user baru berhasil diinput",
+            message="Pembuatan data user baru berhasil diinput",
             data={
                 "id": new_user.id,
                 "username": new_user.username,
@@ -49,26 +50,31 @@ def do_registration():
 
 @user_management_routes.route("/userlogin", methods=['POST'])
 def do_user_login():
-    
+
     connection = engine.connect()
     Session = sessionmaker(connection)
     session = Session()
 
     try:
-        user = session.query(User).filter(User.username==request.form['username']).first()
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-        if user == None:
+        if not username or not password:
+            return {"message": "Username atau password tidak boleh kosong"}
+
+        user = session.query(User).filter(User.username == username).first()
+
+        if not user:
             return {"message": "Username anda belum terdaftar"}
         
-        if not user.check_password(request.form['password']):
+        if not user.check_password(password):
             return {"message": "Password salah"}
         
-        access_token = create_access_token(identity=user.name)
+        access_token = create_access_token(identity=user.id)
         return jsonify({"access_token": access_token}), 200
        
-    except Exception as e :
-        return {"message" : "Login belum berhasil"}
-
+    except Exception as e:
+        return {"message": "Login belum berhasil"}
 
 @user_management_routes.route("/users", methods=['GET'])
 @login_required
@@ -80,8 +86,9 @@ def users_home():
     try:
         user_query = session.query(User)
 
-        if request.args.get('query') != None:
-            search_query = request.args.get('query')
+
+        search_query = request.args.get('query')
+        if search_query:
             user_query = user_query.filter(User.username.like(f'%{search_query}%'))
 
         users = user_query.all()
@@ -105,7 +112,7 @@ def get_user_by_id(user_id):
     Session = sessionmaker(connection)
     session = Session()
     try:
-        user = session.query(User).filter(User.id==user_id).first()
+        user = session.query(User).filter(User.id == user_id).first()
         if user:
             return jsonify(user.serialize(full=True))
         else:
