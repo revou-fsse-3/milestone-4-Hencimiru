@@ -1,11 +1,10 @@
 from flask import Blueprint, request, redirect, jsonify
 from flask_login import login_required, login_user, logout_user
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token,jwt_required
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func
 from sql_connector.mysql_connector import engine
 from models.users import User
-
 from DTO.api_response import api_response
 
 user_management_routes = Blueprint('user_management_routes', __name__)
@@ -74,10 +73,10 @@ def do_user_login():
         return jsonify({"access_token": access_token}), 200
        
     except Exception as e:
-        return {"message": "Login belum berhasil"}
+        return {"message": "Login belum berhasil "+ str(e)}
 
 @user_management_routes.route("/users", methods=['GET'])
-@login_required
+@jwt_required()
 def users_home():
     response_data = dict()
     connection = engine.connect()
@@ -93,7 +92,6 @@ def users_home():
 
         users = user_query.all()
         response_data['users'] = [user.serialize(full=False) for user in users]
-
         return jsonify(response_data)
 
     except Exception as e:
@@ -106,7 +104,7 @@ def users_home():
         session.close()
 
 @user_management_routes.route("/users/<int:user_id>", methods=['GET'])
-@login_required
+@jwt_required()
 def get_user_by_id(user_id):
     connection = engine.connect()
     Session = sessionmaker(connection)
@@ -132,7 +130,7 @@ def get_user_by_id(user_id):
 
 
 @user_management_routes.route("/users/<int:user_id>", methods=['PUT'])
-@login_required
+@jwt_required()
 def update_user_by_id(user_id):
     connection = engine.connect()
     Session = sessionmaker(connection)
