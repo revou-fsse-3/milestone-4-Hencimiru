@@ -15,7 +15,26 @@ class Transaction(Base):
     description = mapped_column(String(255), nullable= False)
     created_at = mapped_column(DateTime(timezone=True), server_default=func.now())
     
-    accounts = relationship("Account", cascade="all,delete-orphan")
+    # accounts = relationship("accounts", cascade="all,delete-orphan")
 
     def __repr__(self):
         return f'<Transaction {self.type}>'
+    
+    def serialize(self, full=True):
+        if full:
+            return {
+                'id': self.id,
+                'from_account_id': self.from_account_id,
+                'to_account_id': self.to_account_id,
+                'amount': self.amount,
+                'type': self.type,
+                'description': self.description,
+                'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        else:
+            return {
+                'id': self.id,
+                'type': self.type,
+                'description': self.description,
+                'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            }

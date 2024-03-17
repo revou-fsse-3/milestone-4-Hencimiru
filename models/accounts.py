@@ -17,3 +17,21 @@ class Account(Base):
     
     def __repr__(self):
         return f'<Account {self.id}>'
+    
+    def serialize(self, full=True):
+        if full:
+            return {
+                'id': self.id,
+                'user_id': self.user_id,
+                'account_type': self.account_type,
+                'account_number': self.account_number,
+                'balance': self.balance,
+                'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+        else:
+            return {
+                'id': self.id,
+                'account_number': self.account_number,
+                'user_id': self.user_id
+            }
